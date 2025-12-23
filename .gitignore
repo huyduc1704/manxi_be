@@ -78,3 +78,9 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+
+# MongoDB data
+mongo-data/
+data/
+*.wt
+*.lock
