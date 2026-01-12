@@ -11,6 +11,7 @@ import { EmployeePositionsModule } from './employee-positions/employee-positions
 import { BookingsModule } from './bookings/bookings.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { VouchersModule } from './vouchers/vouchers.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { VouchersModule } from './vouchers/vouchers.module';
     BookingsModule,
     ReviewsModule,
     VouchersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
