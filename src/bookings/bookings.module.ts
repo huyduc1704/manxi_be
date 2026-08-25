@@ -6,12 +6,15 @@ import { Booking, BookingSchema } from './schemas/booking.schema';
 import { Service, ServiceSchema } from 'src/services/schemas/service.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TelegramModule } from '../telegram/telegram.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Booking.name, schema: BookingSchema },
       { name: Service.name, schema: ServiceSchema }, // Import thêm Service Model để tra cứu giá
     ]),
+    TelegramModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

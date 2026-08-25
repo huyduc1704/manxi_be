@@ -25,6 +25,11 @@ import { AuthModule } from './auth/auth.module';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
+        const uri = configService.get<string>('MONGO_URI');
+        if (uri) {
+          return { uri };
+        }
+
         const username = configService.get<string>('MONGO_INITDB_ROOT_USERNAME');
         const password = configService.get<string>('MONGO_INITDB_ROOT_PASSWORD');
         const dbName = configService.get<string>('MONGO_DB_NAME');
@@ -32,10 +37,10 @@ import { AuthModule } from './auth/auth.module';
 
         const host = configService.get<string>('MONGO_HOST') || 'localhost';
 
-        const uri = `mongodb://${username}:${password}@${host}:${port}/${dbName}?authSource=admin`;
+        const localUri = `mongodb://${username}:${password}@${host}:${port}/${dbName}?authSource=admin`;
 
         return {
-          uri,
+          uri: localUri,
         };
       },
       inject: [ConfigService],

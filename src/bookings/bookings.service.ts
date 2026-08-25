@@ -5,12 +5,14 @@ import { UpdateBookingDto } from './dto/update-booking.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Booking, BookingDocument, BookingType, PaymentStatus } from './schemas/booking.schema';
 import { Service, ServiceDocument } from 'src/services/schemas/service.schema';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class BookingsService {
   constructor(
     @InjectModel(Booking.name) private bookingModel: Model<BookingDocument>,
     @InjectModel(Service.name) private serviceModel: Model<ServiceDocument>,
+    private telegramService: TelegramService,
   ) { }
 
   async create(createBookingDto: CreateBookingDto, userId?: string) {
@@ -40,6 +42,7 @@ export class BookingsService {
       finalAmount,
       estimatedDuration,
       paymentStatus: PaymentStatus.UNPAID,
+      bookingCode: `BK${Date.now()}${Math.floor(Math.random() * 1000)}`,
     };
 
     if (userId) {
@@ -53,12 +56,32 @@ export class BookingsService {
     }
 
     const newBooking = new this.bookingModel(bookingData);
-    return newBooking.save();
+    const savedBooking = await newBooking.save();
+
+    // Gửi thông báo Telegram
+    const serviceNames = services.map(s => s.name).join(', ');
+    this.telegramService.sendBookingNotification({
+      customerName: createBookingDto.guestInfo?.fullName || 'Member',
+      phone: createBookingDto.guestInfo?.phone || 'N/A',
+      date: createBookingDto.bookingDate,
+      time: createBookingDto.bookingTime,
+      serviceName: serviceNames,
+      note: createBookingDto.customerNote,
+    });
+
+    return savedBooking;
   }
 
 
-  findAll() {
-    return this.bookingModel.find();
+  async findAll() {
+    return this.bookingModel.find().populate('service').exec();
+  }
+
+  async findByUser(userId: string) {
+    return this.bookingModel.find({ user: userId })
+      .populate('service', 'name duration price') // Populate tên dịch vụ để hiện lên UI
+      .sort({ date: -1, time: -1 }) // Mới nhất lên đầu
+      .exec();
   }
 
   findOne(id: string) {

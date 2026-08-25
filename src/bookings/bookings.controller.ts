@@ -32,6 +32,20 @@ export class BookingsController {
     return this.bookingsService.create(createBookingDto, userId);
   }
 
+  @Get('my-bookings')
+  async findMyBookings(@Headers('authorization') authHeader: string) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Missing token');
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = this.jwtService.verify(token, { secret: process.env.JWT_SECRET });
+      return this.bookingsService.findByUser(decoded.sub);
+    } catch (err) {
+      throw new UnauthorizedException('Invalid token');
+    }
+  }
+
   @Get()
   findAll() {
     return this.bookingsService.findAll();
