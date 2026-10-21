@@ -347,3 +347,18 @@ BookingSchema.methods.verifyOtp = function (inputOtp: string): boolean {
 
     return false;
 };
+
+BookingSchema.index(
+    {
+        employee: 1,
+        bookingDate: 1,
+        bookingTime: 1
+    },
+    {
+        unique: true,
+        partialFilterExpression: {
+            status: { $ne: BookingStatus.CANCELLED },
+            employee: { $exists: true }
+        }
+    }
+)

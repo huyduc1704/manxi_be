@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     IsArray,
+    IsBoolean,
     IsDateString,
     IsEmail,
     IsEnum,
@@ -41,6 +42,14 @@ export class CreateBookingDto {
     @IsArray()
     @IsMongoId({ each: true })
     serviceIds: string[];
+
+    @IsOptional()
+    @IsMongoId()
+    employeeId?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    isRandomEmployee?: boolean;
 
     @IsDateString()
     bookingDate: string;

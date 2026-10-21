@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
 import { Booking, BookingSchema } from './schemas/booking.schema';
-import { Service, ServiceSchema } from 'src/services/schemas/service.schema';
+import { Service, ServiceSchema } from '../services/schemas/service.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TelegramModule } from '../telegram/telegram.module';

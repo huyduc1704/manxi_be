@@ -3,9 +3,11 @@ import { Model } from 'mongoose';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Booking, BookingDocument, BookingType, PaymentStatus } from './schemas/booking.schema';
-import { Service, ServiceDocument } from 'src/services/schemas/service.schema';
+import { Booking, BookingDocument, BookingStatus, BookingType, PaymentStatus } from './schemas/booking.schema';
+import { Service, ServiceDocument } from '../services/schemas/service.schema';
 import { TelegramService } from '../telegram/telegram.service';
+import { ConflictException } from '@nestjs/common';
+
 
 @Injectable()
 export class BookingsService {
@@ -24,6 +26,22 @@ export class BookingsService {
       throw new NotFoundException('Some services not found');
     }
 
+    const bookingDateObj = new Date(createBookingDto.bookingDate);
+    bookingDateObj.setUTCHours(0, 0, 0, 0);
+
+    if (createBookingDto.employeeId) {
+      const existingBooking = await this.bookingModel.findOne({
+        employee: createBookingDto.employeeId,
+        bookingDate: bookingDateObj,
+        bookingTime: createBookingDto.bookingTime,
+        status: { $ne: BookingStatus.CANCELLED },
+      });
+
+      if (existingBooking) {
+        throw new ConflictException('Khung giờ này của nhân viên đã có người đặt, vui lòng chọn giờ khác.');
+      }
+    }
+
     const totalAmount = services.reduce((sum, service) => sum + (service.price || 0), 0);
 
     const discountAmount = services.reduce((sum, service) =>
@@ -36,6 +54,8 @@ export class BookingsService {
 
     const bookingData: any = {
       ...createBookingDto,
+      bookingDate: bookingDateObj,
+      employee: createBookingDto.employeeId,
       services: createBookingDto.serviceIds,
       totalAmount,
       discountAmount,
@@ -55,32 +75,45 @@ export class BookingsService {
       bookingData.bookingType = BookingType.GUEST
     }
 
-    const newBooking = new this.bookingModel(bookingData);
-    const savedBooking = await newBooking.save();
+    try {
+      const newBooking = new this.bookingModel(bookingData);
+      const savedBooking = await newBooking.save();
 
-    // Gửi thông báo Telegram
-    const serviceNames = services.map(s => s.name).join(', ');
-    this.telegramService.sendBookingNotification({
-      customerName: createBookingDto.guestInfo?.fullName || 'Member',
-      phone: createBookingDto.guestInfo?.phone || 'N/A',
-      date: createBookingDto.bookingDate,
-      time: createBookingDto.bookingTime,
-      serviceName: serviceNames,
-      note: createBookingDto.customerNote,
-    });
+      // Gửi thông báo Telegram
+      const serviceNames = services.map(s => s.name).join(', ');
+      this.telegramService.sendBookingNotification({
+        customerName: createBookingDto.guestInfo?.fullName || 'Member',
+        phone: createBookingDto.guestInfo?.phone || 'N/A',
+        date: createBookingDto.bookingDate,
+        time: createBookingDto.bookingTime,
+        serviceName: serviceNames,
+        note: createBookingDto.customerNote,
+      });
 
-    return savedBooking;
+      return savedBooking;
+    } catch (error: any) {
+      if (error.code === 11000) {
+        throw new ConflictException("Khung giờ này vừa có người nhanh tay đặt trước mất rồi!");
+      }
+      throw error;
+    }
   }
 
 
   async findAll() {
-    return this.bookingModel.find().populate('service').exec();
+    return this.bookingModel.find()
+      .populate('services', 'name duration price')
+      .populate('employee', 'fullName avatar')
+      .populate('customer', 'fullName phone email')
+      .sort({ bookingDate: -1, bookingTime: -1 })
+      .exec();
   }
 
   async findByUser(userId: string) {
-    return this.bookingModel.find({ user: userId })
-      .populate('service', 'name duration price') // Populate tên dịch vụ để hiện lên UI
-      .sort({ date: -1, time: -1 }) // Mới nhất lên đầu
+    return this.bookingModel.find({ customer: userId })
+      .populate('services', 'name duration price')
+      .populate('employee', 'fullName avatar')
+      .sort({ bookingDate: -1, bookingTime: -1 })
       .exec();
   }
 
